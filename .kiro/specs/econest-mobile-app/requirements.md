@@ -43,6 +43,7 @@ EcoNest is a mobile application built with React Native and Expo that helps user
 4. THE EcoNest System SHALL award base points between 5 and 20 per action, visualize streaks with a progress ring showing bonuses at 3, 7, and 14 consecutive days, and cap daily points at 50 per habit category
 5. THE EcoNest System SHALL debounce rapid taps with 300 millisecond delay and display friendly microcopy stating "Today max reached" when caps are hit
 6. THE Convex Backend SHALL validate all point awards server-side to enforce caps and prevent client manipulation on Sync
+7. THE EcoNest System SHALL provide an undo functionality that removes the most recent log from SQLite and decrements the unsynced badge when the user taps "Undo" within 5 seconds
 
 ### Requirement 3: Leaderboard
 
@@ -136,7 +137,7 @@ EcoNest is a mobile application built with React Native and Expo that helps user
 
 ---
 
-## Judge Demo Script
+## Demo Script
 
 **30-Second Demo Flow:**
 
@@ -147,7 +148,7 @@ EcoNest is a mobile application built with React Native and Expo that helps user
 5. **Leaderboard**: Navigate to Leaderboard → show "You vs. 3 closest" carousel → highlight current rank with delta animation (green arrow up)
 6. **Finish**: Show leaderboard delta animation → emphasize real-time ranking and smooth micro-interactions
 
-**Tagline for judges:** "EcoNest — track your green wins, compete with friends, and stay eco-motivated — all offline-first."
+**Tagline:** "EcoNest — track your green wins, compete with friends, and stay eco-motivated — all offline-first."
 
 **Key Talking Points:**
 

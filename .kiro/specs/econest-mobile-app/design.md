@@ -507,7 +507,6 @@ interface SyncItemResult {
 2. Mark item as 'failed' in SQLite
 3. Show toast with error message
 4. Provide option to dismiss or retry
-5. Log error for debugging
 
 **Design Decision**: Server-side validation prevents point manipulation and ensures fair leaderboards.
 
@@ -523,68 +522,6 @@ interface SyncItemResult {
 4. Re-enable after cooldown
 
 **Design Decision**: Prevents server overload and accidental duplicate syncs.
-
-## Testing Strategy
-
-### Unit Tests
-
-**Services to Test**:
-
-- SyncService: batch creation, response handling, conflict resolution
-- HabitService: point calculation, streak logic, cap enforcement
-- LeaderboardService: rank calculation, delta computation
-
-**Tools**: Jest + React Native Testing Library
-
-**Coverage Target**: 80% for business logic
-
-### Integration Tests
-
-**Flows to Test**:
-
-1. Habit log → SQLite write → Sync → Convex update
-2. Offline habit log → Online sync → Leaderboard update
-3. Demo mode → Habit log → Leaderboard view
-4. Conflict resolution → Keep local → Verify SQLite
-5. Authentication → Sync → Leaderboard subscription
-
-**Tools**: Detox for E2E testing
-
-### Manual Testing Checklist
-
-**Demo Flow** (30 seconds):
-
-- [ ] Launch app → Try demo data
-- [ ] Log habit → See animation + toast
-- [ ] Check unsynced badge increments
-- [ ] Tap Sync → See confetti
-- [ ] View Leaderboard → See rank + delta
-
-**Offline Scenarios**:
-
-- [ ] Log habits offline → Verify SQLite write
-- [ ] Sync when online → Verify upload
-- [ ] View leaderboard offline → See cached data
-
-**Accessibility**:
-
-- [ ] Enable VoiceOver → Navigate all screens
-- [ ] Enable reduced motion → Verify animations disabled
-- [ ] Increase font size → Verify layout adapts
-- [ ] Test color contrast → Verify WCAG AA compliance
-
-### Performance Testing
-
-**Metrics to Monitor**:
-
-- Habit log response time: < 100ms (SQLite write)
-- Sync duration: < 3s for 50 items
-- Leaderboard render: < 500ms for 100 entries
-- Animation frame rate: 60fps target
-
-**Tools**: React Native Performance Monitor, Flipper
-
-**Design Decision**: Local-first architecture ensures instant UI feedback regardless of network conditions.
 
 ## Animation and Micro-Interaction Specifications
 
@@ -740,12 +677,6 @@ SYNC_COOLDOWN_SECONDS=5
 - Separate development and production builds
 - Code signing for app stores
 - OTA updates via Expo Updates
-
-### Monitoring
-
-- Error tracking: Sentry (optional)
-- Performance monitoring: Expo Analytics
-- Crash reporting: Native crash reporters
 
 **Design Decision**: Expo ecosystem provides streamlined deployment and updates without complex native tooling.
 
