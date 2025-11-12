@@ -1,50 +1,225 @@
-# Welcome to your Expo app 👋
+# EcoNest Contexts
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This directory contains React contexts for managing authentication and demo mode in the EcoNest application.
 
-## Get started
+## AuthContext
 
-1. Install dependencies
+Manages user authentication, session management, and Convex integration.
 
-   ```bash
-   npm install
-   ```
+### Features
 
-2. Start the app
+- Email/password authentication via Convex backend
+- Secure session storage using expo-secure-store
+- 7-day session duration with automatic expiry
+- Privacy settings management
+- Database initialization on app startup
 
-   ```bash
-   npx expo start
-   ```
+### Usage
 
-In the output, you'll find options to open the app in a
+```tsx
+import { useAuth } from "@/contexts";
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+function MyComponent() {
+  const { user, isAuthenticated, signIn, signUp, signOut } = useAuth();
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+  const handleSignIn = async () => {
+    try {
+      await signIn("user@example.com", "password123");
+      // Navigate to home screen
+    } catch (error) {
+      console.error("Sign in failed:", error);
+    }
+  };
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+  return (
+    <View>
+      {isAuthenticated ? (
+        <Text>Welcome, {user?.displayName}!</Text>
+      ) : (
+        <Button title="Sign In" onPress={handleSignIn} />
+      )}
+    </View>
+  );
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### API
 
-## Learn more
+#### `useAuth()`
 
-To learn more about developing your project with Expo, look at the following resources:
+Returns an object with the following properties:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- `user: AuthUser | null` - Current authenticated user
+- `isLoading: boolean` - Loading state
+- `isAuthenticated: boolean` - Whether user is authenticated
+- `signIn(email, password): Promise<void>` - Sign in with email/password
+- `signUp(email, password, displayName): Promise<void>` - Create new account
+- `signOut(): Promise<void>` - Sign out and clear session
+- `updatePrivacy(isAnonymous): Promise<void>` - Update privacy settings
 
-## Join the community
+#### `AuthUser` Type
 
-Join our community of developers creating universal apps.
+```typescript
+interface AuthUser {
+  userId: Id<"users">;
+  email: string;
+  displayName: string;
+  ecoPoints: number;
+  isAnonymous: boolean;
+}
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## DemoModeContext
+
+Manages demo mode activation and sample data population.
+
+### Features
+
+- One-tap demo mode activation
+- Realistic sample data generation
+- Demo habit logs (7 days of data)
+- Demo leaderboard with rankings
+- Demo streaks and statistics
+- Clean data cleanup on deactivation
+
+### Usage
+
+```tsx
+import { useDemoMode } from "@/contexts";
+
+function OnboardingScreen() {
+  const { isDemoMode, activateDemoMode } = useDemoMode();
+
+  const handleTryDemo = async () => {
+    try {
+      await activateDemoMode();
+      // Navigate to home screen
+    } catch (error) {
+      console.error("Failed to activate demo mode:", error);
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Try demo data" onPress={handleTryDemo} />
+    </View>
+  );
+}
+```
+
+### API
+
+#### `useDemoMode()`
+
+Returns an object with the following properties:
+
+- `isDemoMode: boolean` - Whether demo mode is active
+- `isLoading: boolean` - Loading state
+- `activateDemoMode(): Promise<void>` - Activate demo mode with sample data
+- `deactivateDemoMode(): Promise<void>` - Deactivate demo mode and clear data
+
+#### `getDemoFriendsLeaderboard()`
+
+Utility function that returns a predefined list of demo friends for the leaderboard.
+
+```typescript
+const demoFriends = getDemoFriendsLeaderboard();
+// Returns array of demo friend rankings
+```
+
+## Demo Data
+
+### Demo Habit Logs
+
+- 7 days of habit logs
+- 2-5 logs per day
+- Random habit types (recycle, bike, meatless, etc.)
+- Random points (5-20 per action)
+- 3 unsynced items for demonstration
+
+### Demo Leaderboard
+
+- 100+ demo users with realistic rankings
+- Demo user positioned at rank 42
+- Users around demo user's rank for "You vs. 3 Closest"
+- Top 10 users for global leaderboard view
+
+### Demo Streaks
+
+- Recycle: 5-day streak
+- Bike: 3-day streak
+- Meatless: 7-day streak
+- Reusable: 2-day streak
+
+### Demo User Stats
+
+- Display Name: "Demo User"
+- EcoPoints: 245
+- Rank: 42
+- Unsynced Count: 3
+
+## Integration
+
+Both contexts are integrated in the root layout (`app/_layout.tsx`):
+
+```tsx
+<ConvexProvider client={convex}>
+  <AuthProvider>
+    <DemoModeProvider>{/* App content */}</DemoModeProvider>
+  </AuthProvider>
+</ConvexProvider>
+```
+
+## Session Management
+
+### Session Storage
+
+Sessions are stored securely using expo-secure-store with the following keys:
+
+- `econest_user_id` - User ID
+- `econest_user_email` - User email
+- `econest_user_display_name` - Display name
+- `econest_session_expiry` - Session expiry timestamp
+- `econest_demo_mode` - Demo mode flag
+
+### Session Duration
+
+- Default: 7 days
+- Automatically expires after duration
+- Restored on app restart if not expired
+
+## Error Handling
+
+Both contexts include comprehensive error handling:
+
+- Network errors during authentication
+- Database initialization failures
+- Session restoration failures
+- Demo data population errors
+
+All errors are logged to console and thrown to the caller for UI handling.
+
+## Database Integration
+
+Both contexts integrate with the SQLite database service:
+
+- Initialize database on app startup
+- Clear data when switching modes
+- Populate demo data in demo mode
+- Clean up on sign out
+
+## Security Considerations
+
+- Passwords are hashed on the server (Convex backend)
+- Session tokens stored securely with expo-secure-store
+- Session expiry enforced client-side
+- Demo mode isolated from authenticated data
+- Privacy settings respected in leaderboard
+
+## Future Enhancements
+
+- Biometric authentication (Face ID, Touch ID)
+- Social authentication (Google, Apple)
+- Multi-device session management
+- Background session refresh
+- Offline authentication caching

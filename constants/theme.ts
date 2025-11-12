@@ -5,8 +5,13 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// EcoNest brand colors
+const ecoGreen = '#34C759'; // Primary brand color for positive actions
+const ecoBlue = '#007AFF'; // Secondary brand color
+const alertOrange = '#FF9500'; // Alert/warning color
+
+const tintColorLight = ecoGreen;
+const tintColorDark = ecoGreen;
 
 export const Colors = {
   light: {
@@ -16,6 +21,9 @@ export const Colors = {
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    accent: ecoGreen,
+    secondary: ecoBlue,
+    alert: alertOrange,
   },
   dark: {
     text: '#ECEDEE',
@@ -24,6 +32,9 @@ export const Colors = {
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    accent: ecoGreen,
+    secondary: ecoBlue,
+    alert: alertOrange,
   },
 };
 

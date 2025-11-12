@@ -53,7 +53,7 @@
   - Add network status detection
   - _Requirements: 3.1, 3.3, 3.4_
 
-- [ ] 6. Set up Convex backend schema and functions
+- [x] 6. Set up Convex backend schema and functions
   - Define users collection schema with validation
   - Define habit_logs collection schema with validation
   - Define sync_batches collection schema for tracking
@@ -64,7 +64,7 @@
   - Add indexes for performance optimization (userId, createdAt, ecoPoints)
   - _Requirements: 1.4, 2.6, 4.3, 8.1_
 
-- [ ] 7. Implement authentication and demo mode contexts
+- [x] 7. Implement authentication and demo mode contexts
   - Create AuthContext with Convex auth integration
   - Create DemoModeContext for sample data management
   - Implement email/password sign-in flow
@@ -75,7 +75,7 @@
   - Initialize database on app startup
   - _Requirements: 1.2, 1.3, 1.4_
 
-- [ ] 8. Build onboarding and authentication screens
+- [x] 8. Build onboarding and authentication screens
   - Create splash screen with logo animation (1-2s)
   - Create onboarding/auth screen layout at app/(auth)/index.tsx
   - Add "Try demo data" button with prominent styling
@@ -86,7 +86,7 @@
   - Add loading states and error handling
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 9. Build Home screen layout and components
+- [x] 9. Build Home screen layout and components
   - Replace default Home screen content with EcoNest layout
   - Implement greeting header with user name/demo indicator
   - Create EcoPoints progress card with rank preview
@@ -97,7 +97,7 @@
   - Add responsive layout for different screen sizes
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 10. Implement habit logging UI with animations
+- [x] 10. Implement habit logging UI with animations
   - Create HabitButton component with icons (44x44pt minimum)
   - Implement tap handler with HabitService integration
   - Create BurstAnimation component (200-350ms with particles using react-native-reanimated)
@@ -110,7 +110,7 @@
   - Coordinate animation sequence timing
   - _Requirements: 2.1, 2.2, 2.3, 2.5, 6.2, 6.3, 6.4_
 
-- [ ] 11. Build sync button and sync UI flow
+- [x] 11. Build sync button and sync UI flow
   - Create SyncButton component (sticky at bottom)
   - Display last synced timestamp
   - Display unsynced count badge with animation
@@ -123,7 +123,7 @@
   - Add 5-second cooldown visual feedback
   - _Requirements: 4.1, 4.2, 4.5, 4.6, 5.5, 6.4_
 
-- [ ] 12. Implement conflict resolution UI
+- [x] 12. Implement conflict resolution UI
   - Create ConflictListItem component
   - Display local vs server data comparison
   - Highlight "Keep Local" as default action

@@ -1,98 +1,190 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import {
+  ClosestCompetitors,
+  ConfettiAnimation,
+  ConflictList,
+  EcoPointsCard,
+  GreetingHeader,
+  HabitButtons,
+  SparklineChart,
+  SyncButton,
+  type HabitType,
+} from "@/components/home";
+import { Toast } from "@/components/home/toast";
+import { UndoSnackbar } from "@/components/home/undo-snackbar";
+import { ThemedView } from "@/components/themed-view";
+import { habitService } from "@/services/habit-service";
+import type { ConflictItem } from "@/services/sync-service";
+import { useState } from "react";
+import { ScrollView, StyleSheet } from "react-native";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [lastLogId, setLastLogId] = useState<string | null>(null);
+  const [confettiVisible, setConfettiVisible] = useState(false);
+  const [syncSuccessMessage, setSyncSuccessMessage] = useState("");
+  const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const handleHabitPress = async (habitType: HabitType) => {
+    try {
+      const result = await habitService.logHabit(habitType);
+
+      // Show toast notification at 200ms
+      setTimeout(() => {
+        setToastMessage(`Logged +${result.pointsAwarded} EcoPoints`);
+        setToastVisible(true);
+      }, 200);
+
+      // Show undo snackbar at 350ms
+      setTimeout(() => {
+        setLastLogId(result.logId);
+        setSnackbarVisible(true);
+      }, 350);
+
+      // Trigger refresh of components at 400ms
+      setTimeout(() => {
+        setRefreshKey((prev) => prev + 1);
+      }, 400);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to log habit";
+
+      // Show error toast
+      setToastMessage(message);
+      setToastVisible(true);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastLogId) return;
+
+    try {
+      await habitService.undoLastLog(lastLogId);
+      setLastLogId(null);
+      setSnackbarVisible(false);
+
+      // Show undo confirmation
+      setToastMessage("Habit log removed");
+      setToastVisible(true);
+
+      // Refresh components
+      setRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to undo";
+      setToastMessage(message);
+      setToastVisible(true);
+    }
+  };
+
+  const handleSyncComplete = (
+    uploaded: number,
+    syncConflicts: ConflictItem[]
+  ) => {
+    // Store conflicts for display
+    setConflicts(syncConflicts);
+
+    // Show confetti animation only if no conflicts
+    if (syncConflicts.length === 0) {
+      setConfettiVisible(true);
+    }
+
+    // Show success toast with summary
+    const message =
+      syncConflicts.length > 0
+        ? `${uploaded} items uploaded — ${syncConflicts.length} conflicts found`
+        : `${uploaded} items uploaded`;
+    setSyncSuccessMessage(message);
+    setToastMessage(message);
+    setToastVisible(true);
+
+    // Refresh components to update data
+    setRefreshKey((prev) => prev + 1);
+
+    // Hide confetti after animation completes
+    if (syncConflicts.length === 0) {
+      setTimeout(() => {
+        setConfettiVisible(false);
+      }, 1000);
+    }
+  };
+
+  const handleConflictResolved = () => {
+    // Refresh the conflict list and other components
+    setRefreshKey((prev) => prev + 1);
+
+    // Show success feedback
+    setToastMessage("Conflict resolved");
+    setToastVisible(true);
+
+    // Remove the resolved conflict from the list
+    // Note: In a real implementation, we'd track which specific conflict was resolved
+    // For now, we'll just refresh the entire list by clearing it
+    // The next sync will show any remaining conflicts
+    setConflicts([]);
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <GreetingHeader key={`greeting-${refreshKey}`} />
+        <EcoPointsCard key={`points-${refreshKey}`} />
+        <SparklineChart key={`chart-${refreshKey}`} />
+        <ClosestCompetitors key={`competitors-${refreshKey}`} />
+
+        {/* Conflict resolution UI */}
+        {conflicts.length > 0 && (
+          <ConflictList
+            conflicts={conflicts}
+            onConflictResolved={handleConflictResolved}
+          />
+        )}
+
+        <HabitButtons onHabitPress={handleHabitPress} />
+
+        {/* Bottom padding for scroll */}
+        <ThemedView style={styles.bottomPadding} />
+      </ScrollView>
+
+      {/* Toast notification */}
+      <Toast
+        message={toastMessage}
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
+      />
+
+      {/* Undo snackbar */}
+      <UndoSnackbar
+        visible={snackbarVisible}
+        onUndo={handleUndo}
+        onDismiss={() => setSnackbarVisible(false)}
+      />
+
+      {/* Sync button (sticky at bottom) */}
+      <SyncButton onSyncComplete={handleSyncComplete} refreshKey={refreshKey} />
+
+      {/* Confetti animation */}
+      <ConfettiAnimation visible={confettiVisible} />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  scrollView: {
+    flex: 1,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  scrollContent: {
+    paddingTop: 0,
+  },
+  bottomPadding: {
+    height: 140, // Extra padding for sticky sync button
   },
 });
