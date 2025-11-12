@@ -1,8 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { Card } from "@/components/ui/card";
+import { Spacing } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { getDatabase } from "@/services/database";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
 
@@ -11,17 +12,12 @@ interface DayData {
   points: number;
 }
 
-export function SparklineChart() {
+export const SparklineChart = memo(function SparklineChart() {
   const [data, setData] = useState<DayData[]>([]);
   const [expanded, setExpanded] = useState(false);
-  const lineColor = "#34C759";
-  const textColor = useThemeColor({}, "text");
+  const lineColor = useThemeColor({}, "accent");
 
-  useEffect(() => {
-    loadWeekData();
-  }, []);
-
-  const loadWeekData = async () => {
+  const loadWeekData = useCallback(async () => {
     try {
       const database = getDatabase();
       const weekData: DayData[] = [];
@@ -54,37 +50,58 @@ export function SparklineChart() {
     } catch (error) {
       console.error("Failed to load week data:", error);
     }
-  };
+  }, []);
 
-  const maxPoints = Math.max(...data.map((d) => d.points), 1);
-  const chartWidth = 280;
-  const chartHeight = 60;
-  const padding = 10;
+  useEffect(() => {
+    loadWeekData();
+  }, [loadWeekData]);
+
+  const chartDimensions = useMemo(
+    () => ({
+      maxPoints: Math.max(...data.map((d) => d.points), 1),
+      chartWidth: 280,
+      chartHeight: 60,
+      padding: 10,
+    }),
+    [data]
+  );
 
   // Generate SVG points for polyline
-  const points = data
-    .map((d, i) => {
-      const x = padding + (i * (chartWidth - 2 * padding)) / (data.length - 1);
-      const y =
-        chartHeight -
-        padding -
-        (d.points / maxPoints) * (chartHeight - 2 * padding);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const points = useMemo(() => {
+    if (data.length === 0) return "";
+
+    return data
+      .map((d, i) => {
+        const x =
+          chartDimensions.padding +
+          (i * (chartDimensions.chartWidth - 2 * chartDimensions.padding)) /
+            (data.length - 1);
+        const y =
+          chartDimensions.chartHeight -
+          chartDimensions.padding -
+          (d.points / chartDimensions.maxPoints) *
+            (chartDimensions.chartHeight - 2 * chartDimensions.padding);
+        return `${x},${y}`;
+      })
+      .join(" ");
+  }, [data, chartDimensions]);
+
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
 
   return (
-    <TouchableOpacity
-      onPress={() => setExpanded(!expanded)}
-      activeOpacity={0.7}
-    >
-      <ThemedView style={[styles.card, styles.shadow]}>
-        <ThemedText type="subtitle" style={styles.title}>
+    <TouchableOpacity onPress={toggleExpanded} activeOpacity={0.7}>
+      <Card style={styles.card}>
+        <ThemedText type="h4" style={styles.title}>
           7-Day Activity
         </ThemedText>
 
         <View style={styles.chartContainer}>
-          <Svg width={chartWidth} height={chartHeight}>
+          <Svg
+            width={chartDimensions.chartWidth}
+            height={chartDimensions.chartHeight}
+          >
             <Polyline
               points={points}
               fill="none"
@@ -95,67 +112,48 @@ export function SparklineChart() {
         </View>
 
         {expanded && (
-          <ThemedView style={styles.detailsContainer}>
+          <View style={styles.detailsContainer}>
             {data.map((day, index) => (
-              <ThemedView key={index} style={styles.dayRow}>
-                <ThemedText style={styles.dayLabel}>{day.date}</ThemedText>
-                <ThemedText style={styles.dayPoints}>
-                  {day.points} pts
+              <View key={index} style={styles.dayRow}>
+                <ThemedText type="bodySmall" variant="secondary">
+                  {day.date}
                 </ThemedText>
-              </ThemedView>
+                <ThemedText type="label">{day.points} pts</ThemedText>
+              </View>
             ))}
-          </ThemedView>
+          </View>
         )}
 
-        <ThemedText style={styles.tapHint}>
+        <ThemedText type="caption" variant="tertiary" style={styles.tapHint}>
           {expanded ? "Tap to collapse" : "Tap to expand"}
         </ThemedText>
-      </ThemedView>
+      </Card>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
-  },
-  shadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginHorizontal: Spacing.screenPadding,
+    marginBottom: Spacing.md,
   },
   title: {
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   chartContainer: {
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   detailsContainer: {
-    marginTop: 8,
-    gap: 8,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
   },
   dayRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 4,
-  },
-  dayLabel: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  dayPoints: {
-    fontSize: 14,
-    fontWeight: "600",
+    paddingVertical: Spacing.xs,
   },
   tapHint: {
-    fontSize: 12,
-    opacity: 0.5,
     textAlign: "center",
   },
 });

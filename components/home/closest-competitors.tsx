@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { getCachedLeaderboard, getUserStats } from "@/services/database";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 
 interface Competitor {
@@ -11,14 +11,10 @@ interface Competitor {
   isUser: boolean;
 }
 
-export function ClosestCompetitors() {
+export const ClosestCompetitors = memo(function ClosestCompetitors() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
 
-  useEffect(() => {
-    loadCompetitors();
-  }, []);
-
-  const loadCompetitors = async () => {
+  const loadCompetitors = useCallback(async () => {
     try {
       const userStats = await getUserStats();
       const userRank = userStats.current_rank;
@@ -53,7 +49,11 @@ export function ClosestCompetitors() {
     } catch (error) {
       console.error("Failed to load competitors:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadCompetitors();
+  }, [loadCompetitors]);
 
   if (competitors.length === 0) {
     return null;
@@ -90,7 +90,7 @@ export function ClosestCompetitors() {
       </ThemedView>
     </ThemedView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

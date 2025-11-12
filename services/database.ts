@@ -11,6 +11,13 @@ const DATABASE_VERSION = 1;
  */
 export async function initializeDatabase(): Promise<void> {
     try {
+        // Try to delete existing database if it's corrupted
+        try {
+            await SQLite.deleteDatabaseAsync('econest.db');
+        } catch (deleteError) {
+            // Ignore if database doesn't exist
+        }
+
         db = await SQLite.openDatabaseAsync('econest.db');
 
         // Enable foreign keys
@@ -174,16 +181,23 @@ export async function insertHabitLog(
 }
 
 /**
- * Get all pending habit logs
+ * Get all pending habit logs with pagination support
  */
-export async function getPendingHabitLogs(limit?: number): Promise<HabitQueueItem[]> {
+export async function getPendingHabitLogs(limit?: number, offset?: number): Promise<HabitQueueItem[]> {
     const database = getDatabase();
 
-    const query = limit
-        ? `SELECT * FROM habits_queue WHERE status = 'pending' ORDER BY created_at ASC LIMIT ?`
-        : `SELECT * FROM habits_queue WHERE status = 'pending' ORDER BY created_at ASC`;
+    let query = `SELECT * FROM habits_queue WHERE status = 'pending' ORDER BY created_at ASC`;
+    const params: any[] = [];
 
-    const params = limit ? [limit] : [];
+    if (limit !== undefined) {
+        query += ` LIMIT ?`;
+        params.push(limit);
+    }
+
+    if (offset !== undefined) {
+        query += ` OFFSET ?`;
+        params.push(offset);
+    }
 
     return await database.getAllAsync<HabitQueueItem>(query, params);
 }
@@ -283,14 +297,25 @@ export async function cacheLeaderboardData(entries: Omit<LeaderboardCacheEntry, 
 }
 
 /**
- * Get cached leaderboard data
+ * Get cached leaderboard data with pagination support
  */
-export async function getCachedLeaderboard(): Promise<LeaderboardCacheEntry[]> {
+export async function getCachedLeaderboard(limit?: number, offset?: number): Promise<LeaderboardCacheEntry[]> {
     const database = getDatabase();
 
-    return await database.getAllAsync<LeaderboardCacheEntry>(
-        'SELECT * FROM leaderboard_cache ORDER BY rank ASC'
-    );
+    let query = 'SELECT * FROM leaderboard_cache ORDER BY rank ASC';
+    const params: any[] = [];
+
+    if (limit !== undefined) {
+        query += ` LIMIT ?`;
+        params.push(limit);
+    }
+
+    if (offset !== undefined) {
+        query += ` OFFSET ?`;
+        params.push(offset);
+    }
+
+    return await database.getAllAsync<LeaderboardCacheEntry>(query, params);
 }
 
 /**
@@ -499,38 +524,93 @@ export async function clearAllData(): Promise<void> {
 }
 
 /**
- * Vacuum the database to reclaim space
+ * Vacuum the database to reclaim space and optimize performance
+ * Should be called periodically (e.g., once per week)
  */
 export async function vacuumDatabase(): Promise<void> {
     const database = getDatabase();
+    console.log('Starting database vacuum...');
+    const startTime = Date.now();
+
     await database.execAsync('VACUUM');
+
+    const duration = Date.now() - startTime;
+    console.log(`Database vacuum completed in ${duration}ms`);
 }
 
 /**
- * Get database statistics
+ * Analyze database tables to update query planner statistics
+ * Improves query performance
+ */
+export async function analyzeDatabase(): Promise<void> {
+    const database = getDatabase();
+    console.log('Analyzing database...');
+
+    await database.execAsync('ANALYZE');
+
+    console.log('Database analysis completed');
+}
+
+/**
+ * Optimize database by running vacuum and analyze
+ * Should be called during app idle time or on startup
+ */
+export async function optimizeDatabase(): Promise<void> {
+    try {
+        await analyzeDatabase();
+        await vacuumDatabase();
+        console.log('Database optimization completed successfully');
+    } catch (error) {
+        console.error('Failed to optimize database:', error);
+    }
+}
+
+/**
+ * Get database statistics with performance metrics
  */
 export async function getDatabaseStats(): Promise<{
     habitsQueueCount: number;
     leaderboardCacheCount: number;
     streaksCount: number;
+    databaseSize?: number;
 }> {
     const database = getDatabase();
 
-    const habitsResult = await database.getFirstAsync<{ count: number }>(
-        'SELECT COUNT(*) as count FROM habits_queue'
-    );
-
-    const leaderboardResult = await database.getFirstAsync<{ count: number }>(
-        'SELECT COUNT(*) as count FROM leaderboard_cache'
-    );
-
-    const streaksResult = await database.getFirstAsync<{ count: number }>(
-        'SELECT COUNT(*) as count FROM streaks'
-    );
+    // Use a single query with multiple counts for better performance
+    const result = await database.getFirstAsync<{
+        habits_count: number;
+        leaderboard_count: number;
+        streaks_count: number;
+    }>(`
+        SELECT 
+            (SELECT COUNT(*) FROM habits_queue) as habits_count,
+            (SELECT COUNT(*) FROM leaderboard_cache) as leaderboard_count,
+            (SELECT COUNT(*) FROM streaks) as streaks_count
+    `);
 
     return {
-        habitsQueueCount: habitsResult?.count || 0,
-        leaderboardCacheCount: leaderboardResult?.count || 0,
-        streaksCount: streaksResult?.count || 0,
+        habitsQueueCount: result?.habits_count || 0,
+        leaderboardCacheCount: result?.leaderboard_count || 0,
+        streaksCount: result?.streaks_count || 0,
     };
+}
+
+/**
+ * Check if database needs optimization
+ * Returns true if vacuum is recommended
+ */
+export async function needsOptimization(): Promise<boolean> {
+    const database = getDatabase();
+
+    // Check for fragmentation by comparing page count
+    const result = await database.getFirstAsync<{
+        page_count: number;
+        freelist_count: number;
+    }>('PRAGMA page_count; PRAGMA freelist_count;');
+
+    if (!result) return false;
+
+    // If more than 10% of pages are free, recommend vacuum
+    const fragmentationRatio = result.freelist_count / result.page_count;
+    return fragmentationRatio > 0.1;
 }

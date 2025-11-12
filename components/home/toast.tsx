@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/themed-text";
-import { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { BorderRadius, Shadows, Spacing } from "@/constants/theme";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useEffect, useMemo } from "react";
+import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -16,6 +18,7 @@ interface ToastProps {
   visible: boolean;
   onDismiss: () => void;
   duration?: number;
+  pointsAwarded?: number;
 }
 
 export function Toast({
@@ -23,9 +26,25 @@ export function Toast({
   visible,
   onDismiss,
   duration = 2000,
+  pointsAwarded,
 }: ToastProps) {
   const translateY = useSharedValue(-100);
   const opacity = useSharedValue(0);
+  const accentColor = useThemeColor({}, "accent");
+
+  // Parse message to check if it contains points
+  const messageInfo = useMemo(() => {
+    const pointsMatch = message.match(/Logged \+(\d+) EcoPoints/);
+    if (pointsMatch && pointsAwarded !== undefined) {
+      return {
+        hasPoints: true,
+        points: pointsAwarded,
+        prefix: "Logged +",
+        suffix: " EcoPoints",
+      };
+    }
+    return { hasPoints: false };
+  }, [message, pointsAwarded]);
 
   useEffect(() => {
     if (visible) {
@@ -47,13 +66,11 @@ export function Toast({
         )
       );
       opacity.value = withSequence(
-        withDelay(
-          duration,
-          withTiming(0, { duration: 200 }, () => {
-            runOnJS(onDismiss)();
-          })
-        )
+        withDelay(duration, withTiming(0, { duration: 200 }))
       );
+
+      // Call onDismiss after animation completes
+      setTimeout(onDismiss, duration + 200);
     }
   }, [visible, duration, translateY, opacity, onDismiss]);
 
@@ -65,8 +82,32 @@ export function Toast({
   if (!visible) return null;
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
-      <ThemedText style={styles.text}>{message}</ThemedText>
+    <Animated.View
+      style={[
+        styles.container,
+        { backgroundColor: accentColor },
+        animatedStyle,
+      ]}
+    >
+      {messageInfo.hasPoints ? (
+        <View style={styles.textContainer}>
+          <ThemedText type="label" style={styles.text}>
+            {messageInfo.prefix}
+          </ThemedText>
+          <AnimatedCounter
+            value={messageInfo.points ?? 0}
+            style={styles.text}
+            duration={400}
+          />
+          <ThemedText type="label" style={styles.text}>
+            {messageInfo.suffix}
+          </ThemedText>
+        </View>
+      ) : (
+        <ThemedText type="label" style={styles.text}>
+          {message}
+        </ThemedText>
+      )}
     </Animated.View>
   );
 }
@@ -75,23 +116,21 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     top: 60,
-    left: 20,
-    right: 20,
-    backgroundColor: "#34C759",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    left: Spacing.screenPadding,
+    right: Spacing.screenPadding,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.button,
+    ...Shadows.cardElevated,
     zIndex: 1000,
+  },
+  textContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   text: {
     color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
     textAlign: "center",
   },
 });

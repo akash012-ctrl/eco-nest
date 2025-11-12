@@ -1,31 +1,36 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { BorderRadius, Spacing, Typography } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { useDemoMode } from "@/contexts/demo-mode-context";
-import { StyleSheet } from "react-native";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { StyleSheet, View } from "react-native";
 
 export function GreetingHeader() {
   const { user } = useAuth();
   const { isDemoMode } = useDemoMode();
+  const warningColor = useThemeColor({}, "warning");
 
   const displayName = isDemoMode ? "Demo User" : user?.displayName || "Guest";
   const greeting = getGreeting();
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.greeting}>
+      <ThemedText type="h3" variant="secondary" style={styles.greeting}>
         {greeting}
       </ThemedText>
-      <ThemedView style={styles.nameRow}>
-        <ThemedText type="subtitle" style={styles.name}>
+      <View style={styles.nameRow}>
+        <ThemedText type="h2" style={styles.name}>
           {displayName}
         </ThemedText>
         {isDemoMode && (
-          <ThemedView style={styles.demoBadge}>
-            <ThemedText style={styles.demoText}>Demo</ThemedText>
-          </ThemedView>
+          <View style={[styles.demoBadge, { backgroundColor: warningColor }]}>
+            <ThemedText type="caption" style={styles.demoText}>
+              Demo
+            </ThemedText>
+          </View>
         )}
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -39,31 +44,28 @@ function getGreeting(): string {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: Spacing.screenPadding,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   greeting: {
-    fontSize: 24,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
   name: {
-    fontSize: 28,
+    // Inherits from h2 type
   },
   demoBadge: {
-    backgroundColor: "#FFA500",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
   },
   demoText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontWeight: Typography.fontWeight.semibold,
     color: "#FFFFFF",
   },
 });

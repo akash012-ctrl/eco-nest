@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { Card } from "@/components/ui/card";
+import { Microcopy, Spacing } from "@/constants/theme";
 import { habitService } from "@/services/habit-service";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -20,9 +21,9 @@ const HABITS: HabitConfig[] = [
   { type: "recycle", label: "Recycle", icon: "♻️", color: "#34C759" },
   { type: "bike", label: "Bike", icon: "🚴", color: "#007AFF" },
   { type: "meatless", label: "Meatless", icon: "🥗", color: "#FF9500" },
-  { type: "reusable", label: "Reusable", icon: "🛍️", color: "#5856D6" },
+  { type: "reusable", label: "Reusable", icon: "🥤", color: "#5856D6" },
   { type: "compost", label: "Compost", icon: "🌱", color: "#32ADE6" },
-  { type: "water", label: "Save Water", icon: "💧", color: "#30B0C7" },
+  { type: "water", label: "Water", icon: "💧", color: "#30B0C7" },
 ];
 
 export function HabitButtons({ onHabitPress }: HabitButtonsProps) {
@@ -69,8 +70,8 @@ export function HabitButtons({ onHabitPress }: HabitButtonsProps) {
   };
 
   return (
-    <ThemedView style={[styles.card, styles.shadow]}>
-      <ThemedText type="subtitle" style={styles.title}>
+    <Card style={styles.card}>
+      <ThemedText type="h4" style={styles.title}>
         Quick Log
       </ThemedText>
 
@@ -90,40 +91,33 @@ export function HabitButtons({ onHabitPress }: HabitButtonsProps) {
       </View>
 
       {cappedHabits.size > 0 && (
-        <ThemedText style={styles.cappedMessage}>
-          Today max reached for some habits
+        <ThemedText
+          type="caption"
+          variant="secondary"
+          style={styles.cappedMessage}
+        >
+          {Microcopy.status.maxReached} for some habits
         </ThemedText>
       )}
-    </ThemedView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
-  },
-  shadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginHorizontal: Spacing.screenPadding,
+    marginBottom: Spacing.md,
   },
   title: {
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: Spacing.itemGap,
   },
   cappedMessage: {
-    marginTop: 12,
-    fontSize: 12,
-    opacity: 0.6,
+    marginTop: Spacing.md,
     textAlign: "center",
   },
 });

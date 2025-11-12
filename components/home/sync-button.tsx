@@ -1,7 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { BorderRadius, Microcopy, Shadows, Spacing } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { syncService } from "@/services/sync-service";
+import { triggerHaptic } from "@/utils/haptics";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
 import {
@@ -27,7 +29,6 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const backgroundColor = useThemeColor({}, "background");
-  const textColor = useThemeColor({}, "text");
   const accentColor = useThemeColor({}, "accent");
 
   // Load initial data and refresh when refreshKey changes
@@ -68,24 +69,14 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
     setErrorMessage(null);
     setIsSyncing(true);
 
-    // Light impact haptic
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (error) {
-      // Haptics not supported, continue
-    }
+    // Light impact haptic with graceful fallback
+    await triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
 
     try {
       const result = await syncService.syncPendingItems();
 
-      // Success haptic
-      try {
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success
-        );
-      } catch (error) {
-        // Haptics not supported, continue
-      }
+      // Success haptic with graceful fallback
+      await triggerHaptic(Haptics.NotificationFeedbackType.Success);
 
       // Update UI
       await loadSyncData();
@@ -96,12 +87,8 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
         onSyncComplete(result.uploaded, result.conflicts);
       }
     } catch (error) {
-      // Error haptic
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } catch (hapticError) {
-        // Haptics not supported, continue
-      }
+      // Error haptic with graceful fallback
+      await triggerHaptic(Haptics.NotificationFeedbackType.Error);
 
       const message = error instanceof Error ? error.message : "Failed to sync";
       setErrorMessage(message);
@@ -123,12 +110,12 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
     const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) return "Just now";
-    if (diffMins === 1) return "1 minute ago";
-    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffMins === 1) return "1 min ago";
+    if (diffMins < 60) return `${diffMins} mins ago`;
 
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return "1 hour ago";
-    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffHours === 1) return "1 hr ago";
+    if (diffHours < 24) return `${diffHours} hrs ago`;
 
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays === 1) return "1 day ago";
@@ -142,10 +129,10 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
       <View style={styles.content}>
         {/* Last sync timestamp */}
         <View style={styles.infoRow}>
-          <ThemedText style={[styles.label, { color: textColor }]}>
+          <ThemedText type="caption" variant="secondary">
             Last synced:
           </ThemedText>
-          <ThemedText style={[styles.timestamp, { color: textColor }]}>
+          <ThemedText type="caption" variant="primary">
             {formatLastSync(lastSyncTime)}
           </ThemedText>
         </View>
@@ -160,22 +147,48 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
           onPress={handleSync}
           disabled={isDisabled}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityLabel={
+            isSyncing
+              ? `${Microcopy.loading.syncing} ${unsyncedCount} items`
+              : cooldownSeconds > 0
+                ? `Sync button on cooldown, wait ${cooldownSeconds} seconds`
+                : unsyncedCount > 0
+                  ? `${Microcopy.actions.sync} ${unsyncedCount} unsynced items`
+                  : "Sync - no items to sync"
+          }
+          accessibilityHint={
+            isDisabled
+              ? undefined
+              : "Tap to synchronize your local data with the server"
+          }
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: isDisabled,
+            busy: isSyncing,
+          }}
         >
           <View style={styles.buttonContent}>
             {isSyncing ? (
               <>
-                <ActivityIndicator color="#FFFFFF" size="small" />
-                <ThemedText style={styles.buttonText}>
-                  Syncing {unsyncedCount} items...
+                <ActivityIndicator
+                  color="#FFFFFF"
+                  size="small"
+                  accessibilityElementsHidden={true}
+                />
+                <ThemedText type="button" style={styles.buttonText}>
+                  {Microcopy.loading.syncing} {unsyncedCount} items...
                 </ThemedText>
               </>
             ) : cooldownSeconds > 0 ? (
-              <ThemedText style={styles.buttonText}>
+              <ThemedText type="button" style={styles.buttonText}>
                 Wait {cooldownSeconds}s
               </ThemedText>
             ) : (
               <>
-                <ThemedText style={styles.buttonText}>Sync</ThemedText>
+                <ThemedText type="button" style={styles.buttonText}>
+                  {Microcopy.actions.sync}
+                </ThemedText>
                 {unsyncedCount > 0 && <UnsyncedBadge count={unsyncedCount} />}
               </>
             )}
@@ -184,15 +197,29 @@ export function SyncButton({ onSyncComplete, refreshKey }: SyncButtonProps) {
 
         {/* Error message with retry */}
         {errorMessage && (
-          <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
+          <View
+            style={styles.errorContainer}
+            accessible={true}
+            accessibilityLabel={`Sync error: ${errorMessage}`}
+            accessibilityRole="alert"
+          >
+            <ThemedText type="bodySmall" style={styles.errorText}>
+              {errorMessage}
+            </ThemedText>
             <TouchableOpacity
               style={styles.retryButton}
               onPress={handleRetry}
               activeOpacity={0.7}
+              accessible={true}
+              accessibilityLabel={Microcopy.actions.retry}
+              accessibilityHint="Tap to retry synchronization"
+              accessibilityRole="button"
             >
-              <ThemedText style={[styles.retryText, { color: accentColor }]}>
-                Retry
+              <ThemedText
+                type="label"
+                style={[styles.retryText, { color: accentColor }]}
+              >
+                {Microcopy.actions.retry}
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -208,40 +235,29 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.screenPadding,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.screenPadding,
     borderTopWidth: 1,
     borderTopColor: "rgba(0, 0, 0, 0.1)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Shadows.cardElevated,
   },
   content: {
-    gap: 12,
+    gap: Spacing.md,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  label: {
-    fontSize: 13,
-    opacity: 0.6,
-  },
-  timestamp: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
   button: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.button,
     minHeight: 48,
     justifyContent: "center",
     alignItems: "center",
+    ...Shadows.button,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -249,37 +265,33 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
   },
   errorContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     backgroundColor: "rgba(255, 59, 48, 0.1)",
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
   },
   errorText: {
     flex: 1,
-    fontSize: 13,
     color: "#FF3B30",
   },
   retryButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: Spacing.xs + 2,
+    paddingHorizontal: Spacing.md,
     minWidth: 44,
     minHeight: 44,
     justifyContent: "center",
     alignItems: "center",
   },
   retryText: {
-    fontSize: 14,
-    fontWeight: "600",
+    // Color applied inline
   },
 });

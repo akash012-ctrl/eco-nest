@@ -1,8 +1,8 @@
+import { useReducedMotion } from "@/contexts/reduced-motion-context";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -28,6 +28,8 @@ export function ConfettiAnimation({
   visible,
   onComplete,
 }: ConfettiAnimationProps) {
+  const { reducedMotion } = useReducedMotion();
+
   const pieces: ConfettiPiece[] = Array.from(
     { length: PIECE_COUNT },
     (_, i) => ({
@@ -39,7 +41,15 @@ export function ConfettiAnimation({
     })
   );
 
-  if (!visible) return null;
+  // Don't render confetti if reduced motion is enabled
+  useEffect(() => {
+    if (reducedMotion && visible && onComplete) {
+      // Call onComplete immediately if reduced motion is enabled
+      onComplete();
+    }
+  }, [reducedMotion, visible, onComplete]);
+
+  if (!visible || reducedMotion) return null;
 
   return (
     <View style={styles.container} pointerEvents="none">
@@ -75,18 +85,15 @@ function ConfettiPiece({ piece, visible, onComplete }: ConfettiPieceProps) {
       });
 
       // Fade out
-      opacity.value = withTiming(
-        0,
-        {
-          duration: 800,
-          easing: Easing.out(Easing.ease),
-        },
-        (finished) => {
-          if (finished && onComplete) {
-            runOnJS(onComplete)();
-          }
-        }
-      );
+      opacity.value = withTiming(0, {
+        duration: 800,
+        easing: Easing.out(Easing.ease),
+      });
+
+      // Call onComplete after animation
+      if (onComplete) {
+        setTimeout(onComplete, 800);
+      }
 
       // Rotation
       rotate.value = withTiming(piece.rotation + 360, {

@@ -9,9 +9,11 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import "react-native-reanimated";
 
+import { ErrorBoundary } from "@/components/error-boundary";
 import { SplashScreen } from "@/components/splash-screen";
 import { AuthProvider, convex, useAuth } from "@/contexts/auth-context";
 import { DemoModeProvider, useDemoMode } from "@/contexts/demo-mode-context";
+import { ReducedMotionProvider } from "@/contexts/reduced-motion-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export const unstable_settings = {
@@ -75,17 +77,21 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ConvexProvider client={convex}>
-      <AuthProvider>
-        <DemoModeProvider>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <RootLayoutNav />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </DemoModeProvider>
-      </AuthProvider>
-    </ConvexProvider>
+    <ErrorBoundary>
+      <ConvexProvider client={convex}>
+        <AuthProvider>
+          <DemoModeProvider>
+            <ReducedMotionProvider>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+              >
+                <RootLayoutNav />
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </ReducedMotionProvider>
+          </DemoModeProvider>
+        </AuthProvider>
+      </ConvexProvider>
+    </ErrorBoundary>
   );
 }

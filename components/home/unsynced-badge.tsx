@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useReducedMotion } from "@/contexts/reduced-motion-context";
 import { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import Animated, {
@@ -14,22 +15,27 @@ interface UnsyncedBadgeProps {
 }
 
 export function UnsyncedBadge({ count }: UnsyncedBadgeProps) {
+  const { reducedMotion } = useReducedMotion();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(count > 0 ? 1 : 0);
 
   useEffect(() => {
     if (count > 0) {
-      // Animate badge appearance and scale
-      opacity.value = withTiming(1, { duration: 200 });
-      scale.value = withSequence(
-        withTiming(1.3, { duration: 100, easing: Easing.out(Easing.ease) }),
-        withTiming(1, { duration: 200, easing: Easing.inOut(Easing.ease) })
-      );
+      // Animate badge appearance with fade (< 150ms, always allowed)
+      opacity.value = withTiming(1, { duration: 150 });
+
+      // Scale animation only if reduced motion is disabled
+      if (!reducedMotion) {
+        scale.value = withSequence(
+          withTiming(1.3, { duration: 100, easing: Easing.out(Easing.ease) }),
+          withTiming(1, { duration: 200, easing: Easing.inOut(Easing.ease) })
+        );
+      }
     } else {
-      // Fade out when count is 0
-      opacity.value = withTiming(0, { duration: 200 });
+      // Fade out when count is 0 (< 150ms, always allowed)
+      opacity.value = withTiming(0, { duration: 150 });
     }
-  }, [count, scale, opacity]);
+  }, [count, scale, opacity, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

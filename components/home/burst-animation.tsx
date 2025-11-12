@@ -82,21 +82,27 @@ export function BurstAnimation({
   trigger,
   color = "#34C759",
 }: BurstAnimationProps) {
+  const { reducedMotion } = useReducedMotion();
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    if (trigger) {
-      // Button scale animation
+    if (trigger && !reducedMotion) {
+      // Button scale animation (disabled in reduced motion mode)
       scale.value = withSequence(
         withTiming(1.2, { duration: 100, easing: Easing.out(Easing.ease) }),
         withTiming(1, { duration: 150, easing: Easing.inOut(Easing.ease) })
       );
     }
-  }, [trigger, scale]);
+  }, [trigger, scale, reducedMotion]);
 
   const buttonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  // Don't render particles if reduced motion is enabled
+  if (reducedMotion) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

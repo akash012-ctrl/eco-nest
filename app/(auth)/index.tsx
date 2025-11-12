@@ -1,3 +1,4 @@
+import { DemoTour } from "@/components/demo-tour";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useAuth } from "@/contexts/auth-context";
@@ -20,7 +21,8 @@ import {
 export default function AuthScreen() {
   const router = useRouter();
   const { signIn, signUp, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { activateDemoMode, isDemoMode } = useDemoMode();
+  const { activateDemoMode, isDemoMode, showDemoTour, completeDemoTour } =
+    useDemoMode();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -69,7 +71,7 @@ export default function AuthScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [contentOpacity, logoOpacity, logoScale]);
 
   const handleDemoMode = async () => {
     try {
@@ -175,6 +177,9 @@ export default function AuthScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Demo Tour */}
+      <DemoTour visible={showDemoTour} onComplete={completeDemoTour} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}

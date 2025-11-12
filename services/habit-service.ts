@@ -1,3 +1,4 @@
+import { classifyError, logError } from '@/utils/error-handler';
 import { v4 as uuidv4 } from 'uuid';
 import {
     deleteHabitLog,
@@ -63,64 +64,70 @@ class HabitService {
      * @returns LogResult with points awarded and status
      */
     async logHabit(habitType: HabitType): Promise<LogResult> {
-        // Check debouncing
-        const now = Date.now();
-        const lastLog = this.lastLogTimestamp.get(habitType);
+        try {
+            // Check debouncing
+            const now = Date.now();
+            const lastLog = this.lastLogTimestamp.get(habitType);
 
-        if (lastLog && now - lastLog < this.DEBOUNCE_DELAY_MS) {
-            throw new Error('Please wait before logging this habit again');
+            if (lastLog && now - lastLog < this.DEBOUNCE_DELAY_MS) {
+                throw new Error('Please wait before logging this habit again');
+            }
+
+            // Check if daily cap is reached
+            const canLog = await this.canLogHabit(habitType);
+            if (!canLog) {
+                throw new Error('Today max reached');
+            }
+
+            // Calculate base points (random between 5-20)
+            const basePoints = this.calculateBasePoints();
+
+            // Get and update streak
+            const streakData = await this.updateStreak(habitType);
+            const streakBonus = this.calculateStreakBonus(streakData.current_streak);
+
+            // Total points for this log
+            const pointsAwarded = basePoints + streakBonus;
+
+            // Generate unique ID
+            const logId = uuidv4();
+
+            // Create payload
+            const payload = {
+                habitType,
+                pointsAwarded,
+                loggedAt: now,
+                basePoints,
+                streakBonus,
+                currentStreak: streakData.current_streak,
+            };
+
+            // Write to SQLite
+            await insertHabitLog(logId, 'habit', payload);
+
+            // Update user stats
+            const userStats = await getUserStats();
+            const newTotal = userStats.total_eco_points + pointsAwarded;
+            await updateUserStats({ total_eco_points: newTotal });
+
+            // Update debounce timestamp
+            this.lastLogTimestamp.set(habitType, now);
+
+            // Check if capped out after this log
+            const cappedOut = !(await this.canLogHabit(habitType));
+
+            return {
+                logId,
+                pointsAwarded,
+                newTotal,
+                streakBonus: streakBonus > 0 ? streakBonus : undefined,
+                cappedOut,
+            };
+        } catch (error) {
+            const appError = classifyError(error);
+            logError(appError, 'HabitService.logHabit');
+            throw error;
         }
-
-        // Check if daily cap is reached
-        const canLog = await this.canLogHabit(habitType);
-        if (!canLog) {
-            throw new Error('Today max reached');
-        }
-
-        // Calculate base points (random between 5-20)
-        const basePoints = this.calculateBasePoints();
-
-        // Get and update streak
-        const streakData = await this.updateStreak(habitType);
-        const streakBonus = this.calculateStreakBonus(streakData.current_streak);
-
-        // Total points for this log
-        const pointsAwarded = basePoints + streakBonus;
-
-        // Generate unique ID
-        const logId = uuidv4();
-
-        // Create payload
-        const payload = {
-            habitType,
-            pointsAwarded,
-            loggedAt: now,
-            basePoints,
-            streakBonus,
-            currentStreak: streakData.current_streak,
-        };
-
-        // Write to SQLite
-        await insertHabitLog(logId, 'habit', payload);
-
-        // Update user stats
-        const userStats = await getUserStats();
-        const newTotal = userStats.total_eco_points + pointsAwarded;
-        await updateUserStats({ total_eco_points: newTotal });
-
-        // Update debounce timestamp
-        this.lastLogTimestamp.set(habitType, now);
-
-        // Check if capped out after this log
-        const cappedOut = !(await this.canLogHabit(habitType));
-
-        return {
-            logId,
-            pointsAwarded,
-            newTotal,
-            streakBonus: streakBonus > 0 ? streakBonus : undefined,
-            cappedOut,
-        };
     }
 
     /**
@@ -128,32 +135,38 @@ class HabitService {
      * @param logId The ID of the log to undo
      */
     async undoLastLog(logId: string): Promise<void> {
-        const database = getDatabase();
+        try {
+            const database = getDatabase();
 
-        // Get the log details
-        const log = await database.getFirstAsync<HabitQueueItem>(
-            'SELECT * FROM habits_queue WHERE id = ?',
-            [logId]
-        );
+            // Get the log details
+            const log = await database.getFirstAsync<HabitQueueItem>(
+                'SELECT * FROM habits_queue WHERE id = ?',
+                [logId]
+            );
 
-        if (!log) {
-            throw new Error('Log not found');
+            if (!log) {
+                throw new Error('Log not found');
+            }
+
+            // Parse payload to get points
+            const payload = JSON.parse(log.payload_json);
+            const pointsAwarded = payload.pointsAwarded || 0;
+
+            // Delete the log
+            await deleteHabitLog(logId);
+
+            // Update user stats (subtract points)
+            const userStats = await getUserStats();
+            const newTotal = Math.max(0, userStats.total_eco_points - pointsAwarded);
+            await updateUserStats({ total_eco_points: newTotal });
+
+            // Note: We don't revert streak data as it's complex and streaks should
+            // generally move forward. The streak will be recalculated on next log.
+        } catch (error) {
+            const appError = classifyError(error);
+            logError(appError, 'HabitService.undoLastLog');
+            throw error;
         }
-
-        // Parse payload to get points
-        const payload = JSON.parse(log.payload_json);
-        const pointsAwarded = payload.pointsAwarded || 0;
-
-        // Delete the log
-        await deleteHabitLog(logId);
-
-        // Update user stats (subtract points)
-        const userStats = await getUserStats();
-        const newTotal = Math.max(0, userStats.total_eco_points - pointsAwarded);
-        await updateUserStats({ total_eco_points: newTotal });
-
-        // Note: We don't revert streak data as it's complex and streaks should
-        // generally move forward. The streak will be recalculated on next log.
     }
 
     /**
@@ -161,30 +174,36 @@ class HabitService {
      * @returns Array of today's habit logs
      */
     async getTodayLogs(): Promise<HabitLog[]> {
-        const database = getDatabase();
+        try {
+            const database = getDatabase();
 
-        // Get start of today (midnight)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStart = today.getTime();
+            // Get start of today (midnight)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStart = today.getTime();
 
-        const logs = await database.getAllAsync<HabitQueueItem>(
-            `SELECT * FROM habits_queue 
+            const logs = await database.getAllAsync<HabitQueueItem>(
+                `SELECT * FROM habits_queue 
        WHERE created_at >= ? 
        ORDER BY created_at DESC`,
-            [todayStart]
-        );
+                [todayStart]
+            );
 
-        return logs.map((log) => {
-            const payload = JSON.parse(log.payload_json);
-            return {
-                id: log.id,
-                habitType: payload.habitType,
-                pointsAwarded: payload.pointsAwarded,
-                loggedAt: log.created_at,
-                status: log.status,
-            };
-        });
+            return logs.map((log) => {
+                const payload = JSON.parse(log.payload_json);
+                return {
+                    id: log.id,
+                    habitType: payload.habitType,
+                    pointsAwarded: payload.pointsAwarded,
+                    loggedAt: log.created_at,
+                    status: log.status,
+                };
+            });
+        } catch (error) {
+            const appError = classifyError(error);
+            logError(appError, 'HabitService.getTodayLogs');
+            throw error;
+        }
     }
 
     /**
@@ -193,8 +212,14 @@ class HabitService {
      * @returns Current streak count
      */
     async getStreakForHabit(habitType: HabitType): Promise<number> {
-        const streakData = await getStreakData(habitType);
-        return streakData?.current_streak || 0;
+        try {
+            const streakData = await getStreakData(habitType);
+            return streakData?.current_streak || 0;
+        } catch (error) {
+            const appError = classifyError(error);
+            logError(appError, 'HabitService.getStreakForHabit');
+            return 0; // Return 0 on error instead of throwing
+        }
     }
 
     /**
@@ -203,15 +228,21 @@ class HabitService {
      * @returns True if the habit can be logged
      */
     async canLogHabit(habitType: HabitType): Promise<boolean> {
-        const todayLogs = await this.getTodayLogs();
+        try {
+            const todayLogs = await this.getTodayLogs();
 
-        // Filter logs for this habit type
-        const habitLogs = todayLogs.filter((log) => log.habitType === habitType);
+            // Filter logs for this habit type
+            const habitLogs = todayLogs.filter((log) => log.habitType === habitType);
 
-        // Calculate total points for this habit today
-        const totalPoints = habitLogs.reduce((sum, log) => sum + log.pointsAwarded, 0);
+            // Calculate total points for this habit today
+            const totalPoints = habitLogs.reduce((sum, log) => sum + log.pointsAwarded, 0);
 
-        return totalPoints < this.DAILY_CAP_PER_CATEGORY;
+            return totalPoints < this.DAILY_CAP_PER_CATEGORY;
+        } catch (error) {
+            const appError = classifyError(error);
+            logError(appError, 'HabitService.canLogHabit');
+            return true; // Allow logging on error to avoid blocking user
+        }
     }
 
     // ========================================================================

@@ -9,6 +9,7 @@ export { HabitButton } from './habit-button';
 export type { HabitType } from './habit-button';
 export { HabitButtons } from './habit-buttons';
 export { SparklineChart } from './sparkline-chart';
+export { StreakProgressRing } from './streak-progress-ring';
 export { SyncButton } from './sync-button';
 export { Toast } from './toast';
 export { UndoSnackbar } from './undo-snackbar';

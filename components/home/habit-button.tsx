@@ -1,6 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
+import { BorderRadius, Shadows, Spacing, Typography } from "@/constants/theme";
+import { useReducedMotion } from "@/contexts/reduced-motion-context";
+import { triggerHaptic } from "@/utils/haptics";
 import * as Haptics from "expo-haptics";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
   Easing,
@@ -29,8 +32,7 @@ interface HabitButtonProps {
   cappedOut?: boolean;
 }
 
-export function HabitButton({
-  type,
+export const HabitButton = memo(function HabitButton({
   label,
   icon,
   color,
@@ -38,6 +40,7 @@ export function HabitButton({
   disabled = false,
   cappedOut = false,
 }: HabitButtonProps) {
+  const { reducedMotion } = useReducedMotion();
   const [showBurst, setShowBurst] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
   const scale = useSharedValue(1);
@@ -51,32 +54,34 @@ export function HabitButton({
     }
   }, [disabled, cappedOut, opacity]);
 
-  const handlePress = async () => {
+  const handlePress = useCallback(async () => {
     if (disabled || cappedOut) return;
 
-    // Trigger haptic feedback at 50ms
+    // Trigger haptic feedback at 50ms with graceful fallback
     setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
     }, 50);
 
-    // Trigger burst animation
-    setBurstKey((prev) => prev + 1);
-    setShowBurst(true);
+    // Trigger burst animation only if reduced motion is disabled
+    if (!reducedMotion) {
+      setBurstKey((prev) => prev + 1);
+      setShowBurst(true);
 
-    // Scale animation
-    scale.value = withSequence(
-      withTiming(1.2, { duration: 100, easing: Easing.out(Easing.ease) }),
-      withTiming(1, { duration: 150, easing: Easing.inOut(Easing.ease) })
-    );
+      // Scale animation
+      scale.value = withSequence(
+        withTiming(1.2, { duration: 100, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 150, easing: Easing.inOut(Easing.ease) })
+      );
+
+      // Reset burst animation
+      setTimeout(() => {
+        setShowBurst(false);
+      }, 350);
+    }
 
     // Call the onPress handler
     onPress();
-
-    // Reset burst animation
-    setTimeout(() => {
-      setShowBurst(false);
-    }, 350);
-  };
+  }, [disabled, cappedOut, reducedMotion, onPress, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -95,11 +100,28 @@ export function HabitButton({
           onPress={handlePress}
           activeOpacity={0.7}
           disabled={disabled || cappedOut}
+          accessible={true}
+          accessibilityLabel={`Log ${label} habit`}
+          accessibilityHint={
+            cappedOut
+              ? "Daily maximum reached for this habit"
+              : disabled
+                ? "This habit is currently unavailable"
+                : `Tap to log ${label} and earn EcoPoints`
+          }
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: disabled || cappedOut,
+          }}
         >
           <ThemedText style={styles.icon}>{icon}</ThemedText>
           <ThemedText style={styles.label}>{label}</ThemedText>
           {cappedOut && (
-            <View style={styles.cappedBadge}>
+            <View
+              style={styles.cappedBadge}
+              accessible={true}
+              accessibilityLabel="Maximum reached"
+            >
               <ThemedText style={styles.cappedText}>Max</ThemedText>
             </View>
           )}
@@ -107,13 +129,13 @@ export function HabitButton({
       </Animated.View>
 
       {showBurst && (
-        <View style={styles.burstContainer}>
+        <View style={styles.burstContainer} accessibilityElementsHidden={true}>
           <BurstAnimation key={burstKey} trigger={showBurst} color={color} />
         </View>
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -122,12 +144,13 @@ const styles = StyleSheet.create({
   button: {
     width: 100,
     height: 100,
-    borderRadius: 16,
+    borderRadius: BorderRadius.xl,
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
     minWidth: 44,
     minHeight: 44,
+    ...Shadows.button,
   },
   disabled: {
     opacity: 0.5,
@@ -136,8 +159,8 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   label: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
     color: "#FFFFFF",
     textAlign: "center",
   },
@@ -147,16 +170,16 @@ const styles = StyleSheet.create({
   },
   cappedBadge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: Spacing.xs,
+    right: Spacing.xs,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 6,
+    paddingHorizontal: Spacing.xs + 2,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
   },
   cappedText: {
     color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: Typography.fontSize.xs - 2,
+    fontWeight: Typography.fontWeight.bold,
   },
 });

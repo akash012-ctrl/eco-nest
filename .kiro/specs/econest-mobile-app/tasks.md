@@ -132,7 +132,7 @@
   - Add visual feedback for resolution
   - _Requirements: 4.4_
 
-- [ ] 13. Build Leaderboard screen with tabs and rankings
+- [x] 13. Build Leaderboard screen with tabs and rankings
   - Create Leaderboard screen at app/(tabs)/leaderboard.tsx
   - Implement tab bar (Global | Demo Friends)
   - Create UserRankCard component (sticky) with rank and delta
@@ -145,7 +145,7 @@
   - Implement real-time subscription updates
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 14. Implement privacy toggle and anonymous mode
+- [x] 14. Implement privacy toggle and anonymous mode
   - Create PrivacyToggle component
   - Add toggle to Settings screen
   - Implement privacy state management with AsyncStorage
@@ -154,7 +154,7 @@
   - Add privacy prompt before first leaderboard post
   - _Requirements: 3.6_
 
-- [ ] 15. Build Settings screen with accessibility options
+- [x] 15. Build Settings screen with accessibility options
   - Create Settings screen at app/(tabs)/settings.tsx
   - Add reduced motion toggle
   - Add privacy mode toggle (Public/Anonymous)
@@ -164,7 +164,7 @@
   - Implement settings persistence to AsyncStorage
   - _Requirements: 6.6, 9.5_
 
-- [ ] 16. Implement reduced motion mode
+- [x] 16. Implement reduced motion mode
   - Create ReducedMotionContext
   - Conditionally disable burst animations
   - Conditionally disable confetti animations
@@ -173,7 +173,7 @@
   - Ensure haptics and toasts remain functional
   - _Requirements: 6.6, 9.5_
 
-- [ ] 17. Implement accessibility features
+- [x] 17. Implement accessibility features
   - Add accessibility labels to all interactive elements
   - Ensure minimum touch target size (44x44pt)
   - Verify color contrast ratios (WCAG AA)
@@ -182,7 +182,7 @@
   - Add graceful haptic fallback for unsupported devices
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.6_
 
-- [ ] 18. Create demo data population utilities
+- [x] 18. Create demo data population utilities
   - Create demo user data generator
   - Create demo habit logs generator (populate habits_queue)
   - Create demo leaderboard data generator (populate leaderboard_cache)
@@ -191,7 +191,7 @@
   - Populate SQLite with demo data on activation
   - _Requirements: 1.3_
 
-- [ ] 19. Implement offline detection and handling
+- [x] 19. Implement offline detection and handling
   - Create useNetworkStatus hook
   - Add offline indicator to UI
   - Implement automatic retry when connection restored
@@ -200,7 +200,7 @@
   - Ensure all user actions work offline
   - _Requirements: 3.4, 7.1, 7.3_
 
-- [ ] 20. Add animated number counters for EcoPoints
+- [x] 20. Add animated number counters for EcoPoints
   - Create AnimatedCounter component using react-native-reanimated
   - Implement counter animation from old to new value
   - Use in EcoPoints progress card
@@ -208,7 +208,7 @@
   - Ensure smooth 60fps animation
   - _Requirements: 6.3, 8.4_
 
-- [ ] 21. Implement streak visualization with progress ring
+- [x] 21. Implement streak visualization with progress ring
   - Create StreakProgressRing component
   - Display current streak count
   - Highlight bonuses at 3, 7, and 14 days
@@ -216,7 +216,7 @@
   - Integrate with HabitService streak data
   - _Requirements: 2.4_
 
-- [ ] 22. Polish visual design and theming
+- [x] 22. Polish visual design and theming
   - Define EcoNest color palette (2-3 brand colors + accent)
   - Update theme configuration in constants/theme.ts
   - Apply consistent spacing and typography
@@ -226,7 +226,7 @@
   - Apply concise microcopy throughout
   - _Requirements: 6.1, 6.5, 6.7_
 
-- [ ] 23. Optimize performance
+- [x] 23. Optimize performance
   - Implement React.memo for expensive components
   - Add useMemo and useCallback where appropriate
   - Verify 60fps animation performance
@@ -244,7 +244,7 @@
   - Test authentication → sync → leaderboard subscription flow
   - _Requirements: All core requirements_
 
-- [ ] 24. Implement error boundaries and error handling
+- [x] 24. Implement error boundaries and error handling
   - Create global error boundary component
   - Add error handling to all service methods
   - Implement user-friendly error messages
